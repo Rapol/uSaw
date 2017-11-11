@@ -26,6 +26,7 @@ provider:
 # you can define service wide environment variables here
   environment:
     USAW_TOOL_TABLE: usaw-tools
+    BUCKET: sbd-usaw-hackhathon
 
 # you can add packaging information here
 #package:

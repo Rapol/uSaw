@@ -2,6 +2,7 @@
 const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB();
 const uuidv4 = require('uuid/v4');
+const s3 = new AWS.S3();
 
 module.exports.router = (event, context, callback) => {
     if (event.httpMethod == "POST") {
@@ -16,12 +17,13 @@ module.exports.router = (event, context, callback) => {
 };
 
 function createTool(event, context, callback) {
+    const id = uuidv4();
     // validate request
     // add to dynamoDB
     const params = {
         Item: {
             "id": {
-                S: uuidv4()
+                S: id
             },
             "toolType": {
                 S: event.body.toolType
@@ -41,8 +43,18 @@ function createTool(event, context, callback) {
         },
         TableName: process.env.USAW_TOOL_TABLE
     };
+    const buf = new Buffer(event.body.img, "base64");
     dynamodb.putItem(params).promise()
-        .then((data) => {
+        .then(() => {
+            return s3.upload({
+                Bucket: process.env.BUCKET,
+                Body: buf,
+                ContentEncoding: 'base64',
+                ContentType: 'image/jpeg',
+                Key: event.body.toolType + '/' + id
+            }).promise()
+        })
+        .then(() => {
             const response = {
                 statusCode: 200,
                 body: JSON.stringify({
@@ -52,7 +64,7 @@ function createTool(event, context, callback) {
             callback(null, response);
         })
         // add to s3
-        .catch(() => serverError(callback))
+        .catch((ex) => serverError(callback, ex))
 }
 
 function detectTool(event, context, callback) {
@@ -69,7 +81,8 @@ function detectTool(event, context, callback) {
     callback(null, response);
 }
 
-function serverError(callback) {
+function serverError(callback, ex) {
+    console.error(ex);
     const response = {
         statusCode: 500,
         body: JSON.stringify({
