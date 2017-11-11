@@ -1,4 +1,4 @@
-service: usaw-image
+service: usaw-tools
 
 provider:
   name: aws
@@ -17,6 +17,11 @@ provider:
           - - "arn:aws:s3:::"
             - "sbd-usaw-hackathon"
             - "/*"
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:GetItem"
+        - "dynamodb:PutItem"
+      Resource: "arn:aws:dynamodb:*:*:table/usaw-tools"
 
 # you can define service wide environment variables here
 #  environment:
@@ -49,3 +54,16 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: sbd-usaw-hackhathon
+    DynamoDbTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: usaw-tools
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
