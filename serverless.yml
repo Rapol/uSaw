@@ -24,8 +24,8 @@ provider:
       Resource: "arn:aws:dynamodb:*:*:table/usaw-tools"
 
 # you can define service wide environment variables here
-#  environment:
-#    variable1: value1
+  environment:
+    USAW_TOOL_TABLE: usaw-tools
 
 # you can add packaging information here
 #package:

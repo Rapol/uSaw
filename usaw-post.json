@@ -1,0 +1,10 @@
+{
+  "httpMethod": "POST",
+  "body": {
+    "toolType": "Saw",
+    "condition": "New",
+    "year": "2015",
+    "businessUnit": "Dewalt",
+    "spec": "17mm"
+  }
+}

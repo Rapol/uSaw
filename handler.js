@@ -1,4 +1,7 @@
 'use strict';
+const AWS = require('aws-sdk');
+const dynamodb = new AWS.DynamoDB();
+const uuidv4 = require('uuid/v4');
 
 module.exports.router = (event, context, callback) => {
     if (event.httpMethod == "POST") {
@@ -8,29 +11,48 @@ module.exports.router = (event, context, callback) => {
         detectTool(event, context, callback);
     }
     else {
-        const response = {
-            statusCode: 500,
-            body: JSON.stringify({
-                message: 'Internal Server error'
-            })
-        };
-        callback(null, response);
+        serverError(callback);
     }
 };
 
 function createTool(event, context, callback) {
     // validate request
     // add to dynamoDB
-    // add to s3
-    const response = {
-        statusCode: 200,
-        body: JSON.stringify({
-            message: 'Go Serverless v1.0! Your function executed successfully!',
-            input: event
-        })
+    const params = {
+        Item: {
+            "id": {
+                S: uuidv4()
+            },
+            "toolType": {
+                S: event.body.toolType
+            },
+            "businessUnit": {
+                S: event.body.businessUnit
+            },
+            "year": {
+                S: event.body.year
+            },
+            "condition": {
+                S: event.body.condition
+            },
+            "spec": {
+                S: event.body.spec
+            }
+        },
+        TableName: process.env.USAW_TOOL_TABLE
     };
-
-    callback(null, response);
+    dynamodb.putItem(params).promise()
+        .then((data) => {
+            const response = {
+                statusCode: 200,
+                body: JSON.stringify({
+                    status: 200
+                })
+            };
+            callback(null, response);
+        })
+        // add to s3
+        .catch(() => serverError(callback))
 }
 
 function detectTool(event, context, callback) {
@@ -44,5 +66,15 @@ function detectTool(event, context, callback) {
         })
     };
 
+    callback(null, response);
+}
+
+function serverError(callback) {
+    const response = {
+        statusCode: 500,
+        body: JSON.stringify({
+            message: 'Internal Server error'
+        })
+    };
     callback(null, response);
 }
