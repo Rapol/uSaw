@@ -19,6 +19,9 @@ module.exports.router = (event, context, callback) => {
 };
 
 function createTool(event, context, callback) {
+    // validate request
+    // add to dynamoDB
+    // add to s3
     const response = {
         statusCode: 200,
         body: JSON.stringify({
@@ -31,6 +34,8 @@ function createTool(event, context, callback) {
 }
 
 function detectTool(event, context, callback) {
+    // validate request
+    // send request to AI API
     const response = {
         statusCode: 200,
         body: JSON.stringify({
