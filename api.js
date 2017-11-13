@@ -5,6 +5,9 @@ const uuidv4 = require('uuid/v4');
 const s3 = new AWS.S3();
 
 module.exports.router = (event, context, callback) => {
+    if (typeof event.body == "string") {
+        event.body = JSON.parse(event.body);
+    }
     if (event.httpMethod == "POST") {
         createTool(event, context, callback);
     }
@@ -18,6 +21,10 @@ module.exports.router = (event, context, callback) => {
 
 function createTool(event, context, callback) {
     const id = uuidv4();
+    if (!event.body.toolType || !event.body.img) {
+        return validationError(callback);
+    }
+    event.body.toolType = event.body.toolType.toLowerCase();
     // validate request
     // add to dynamoDB
     const params = {
@@ -25,40 +32,44 @@ function createTool(event, context, callback) {
             "id": {
                 S: id
             },
-            "toolType": {
-                S: event.body.toolType
-            },
-            "businessUnit": {
-                S: event.body.businessUnit
-            },
-            "year": {
-                S: event.body.year
-            },
-            "condition": {
-                S: event.body.condition
-            },
-            "spec": {
-                S: event.body.spec
+            "timestamp": {
+                S: Date.now().toString()
             }
         },
         TableName: process.env.USAW_TOOL_TABLE
     };
-    const buf = new Buffer(event.body.img, "base64");
+    params.Item.toolType = {S: event.body.toolType};
+    if (event.body.businessUnit) {
+        params.Item.businessUnit = {S: event.body.businessUnit};
+    }
+    if (event.body.year) {
+        params.Item.year = {S: event.body.year};
+    }
+    if (event.body.condition) {
+        params.Item.condition = {S: event.body.condition.toLowerCase()};
+    }
+    if (event.body.spec) {
+        params.Item.spec = {S: event.body.spec};
+    }
     dynamodb.putItem(params).promise()
         .then(() => {
+            const buf = new Buffer(event.body.img, "base64");
             return s3.upload({
                 Bucket: process.env.BUCKET,
                 Body: buf,
                 ContentEncoding: 'base64',
-                ContentType: 'image/jpeg',
-                Key: event.body.toolType + '/' + id
+                ContentType: 'image/jpg',
+                Key: event.body.toolType + '/' + id + ".jpg"
             }).promise()
         })
         .then(() => {
             const response = {
                 statusCode: 200,
                 body: JSON.stringify({
-                    status: 200
+                    status: 200,
+                    data: {
+                        id: id
+                    }
                 })
             };
             callback(null, response);
@@ -81,11 +92,23 @@ function detectTool(event, context, callback) {
     callback(null, response);
 }
 
+function validationError(callback) {
+    const response = {
+        statusCode: 400,
+        body: JSON.stringify({
+            status: 400,
+            message: 'Validation Error'
+        })
+    };
+    callback(null, response);
+}
+
 function serverError(callback, ex) {
     console.error(ex);
     const response = {
         statusCode: 500,
         body: JSON.stringify({
+            status: 500,
             message: 'Internal Server error'
         })
     };

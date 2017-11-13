@@ -1,5 +1,15 @@
 service: usaw-tools
 
+custom:
+  defaultStage: "dev"
+  defaultRegion: "us-east-1"
+  # set variables from command arguments or default to provider
+  stage: "${opt:stage, self:provider.stage}"
+  region: "${opt:region, self:provider.region}"
+  BUCKET: "sbd-usaw-hackathon"
+  USAW_TOOL_TABLE: "usaw-tools"
+
+
 provider:
   name: aws
   runtime: nodejs6.10
@@ -12,21 +22,21 @@ provider:
       Action:
         - "s3:PutObject"
       Resource:
-        Fn::Join:
-          - ""
-          - - "arn:aws:s3:::"
-            - "sbd-usaw-hackathon"
-            - "/*"
+        - "arn:aws:s3:::sbd-usaw-hackathon"
+        - Fn::Join:
+            - ""
+            - - "arn:aws:s3:::"
+              - "sbd-usaw-hackathon"
+              - "/*"
     - Effect: "Allow"
       Action:
-        - "dynamodb:GetItem"
-        - "dynamodb:PutItem"
+        - "dynamodb:*"
       Resource: "arn:aws:dynamodb:*:*:table/usaw-tools"
 
 # you can define service wide environment variables here
   environment:
-    USAW_TOOL_TABLE: usaw-tools
-    BUCKET: sbd-usaw-hackhathon
+    USAW_TOOL_TABLE: "${self:custom.USAW_TOOL_TABLE}"
+    BUCKET: "${self:custom.BUCKET}"
 
 # you can add packaging information here
 #package:
@@ -39,7 +49,7 @@ provider:
 
 functions:
   usaw-tools:
-    handler: handler.router
+    handler: api.router
     events:
       - http:
           path: tools
@@ -47,14 +57,19 @@ functions:
       - http:
           path: tools/detect
           method: put
+  usaw-events:
+    handler: events.handler
+    events:
+      - s3:
+          bucket: sbd-usaw-hackathon
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: saw/
+            - suffix: .jpg
 
 # you can add CloudFormation resource templates here
 resources:
   Resources:
-    uSawS3:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: sbd-usaw-hackhathon
     DynamoDbTable:
       Type: AWS::DynamoDB::Table
       Properties:
